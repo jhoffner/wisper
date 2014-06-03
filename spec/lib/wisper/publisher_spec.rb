@@ -272,8 +272,8 @@ describe Wisper::Publisher do
     it 'subscribes multiple listeners with same options' do
       publisher.add_listener(listener, listener2, prefix: true)
 
-      listener.should_receive(:on_happened).once
-      listener2.should_receive(:on_happened).once
+      expect(listener).to receive(:on_happened).once
+      expect(listener2).to receive(:on_happened).once
 
       publisher.send(:broadcast, 'happened')
     end
