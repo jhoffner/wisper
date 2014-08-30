@@ -8,13 +8,12 @@ module Wisper
       @prefix = stringify_prefix(options[:prefix])
       @class_prefix = options[:class_prefix]
       @allowed_classes = Array(options[:scope]).map(&:to_s).to_set
-      @allow_private = options[:allow_private] || options[:private]
       fail_on_async if options.has_key?(:async)
     end
 
     def broadcast(event, publisher, *args)
       method_to_call = map_event_to_method(event, publisher)
-      if should_broadcast?(event) && listener.respond_to?(method_to_call, allow_private) && publisher_in_scope?(publisher)
+      if should_broadcast?(event) && listener.respond_to?(method_to_call) && publisher_in_scope?(publisher)
         if allow_private
           listener.send(method_to_call, *args)
         else
