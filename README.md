@@ -78,7 +78,7 @@ Please refer to the [wisper-async](https://github.com/krisleech/wisper-async) ge
 class Bid < ActiveRecord::Base
   include Wisper::Publisher
 
-  validates :amount, :presence => true
+  validates :amount, presence: true
 
   def commit(_attrs = nil)
     assign_attributes(_attrs) if _attrs.present?
@@ -108,7 +108,7 @@ class BidsController < ApplicationController
     @bid.subscribe(StatisticsListener.new)
 
     @bid.on(:create_bid_successful) { |bid| redirect_to bid }
-    @bid.on(:create_bid_failed)     { |bid| render :action => :new }
+    @bid.on(:create_bid_failed)     { |bid| render action: :new }
 
     @bid.commit
   end
@@ -207,7 +207,7 @@ obvious on reading the code and of course you are introducing global state and
 'always on' behaviour. This may not desirable.
 
 ```ruby
-Wisper.add_listener(MyListener.new)
+Wisper.subscribe(MyListener.new)
 ```
 
 In a Rails app you might want to add your global listeners in an initalizer.
@@ -220,7 +220,7 @@ You might want to globally subscribe a listener to publishers with a certain
 class.
 
 ```ruby
-Wisper.add_listener(MyListener.new, :scope => :MyPublisher)
+Wisper.subscribe(MyListener.new, scope: :MyPublisher)
 ```
 
 This will subscribe the listener to all instances of `MyPublisher` and its
@@ -229,7 +229,7 @@ subclasses.
 Alternatively you can also do exactly the same with a publisher class:
 
 ```ruby
-MyPublisher.add_listener(MyListener.new)
+MyPublisher.subscribe(MyListener.new)
 ```
 
 ## Temporary Global Listeners
@@ -237,7 +237,7 @@ MyPublisher.add_listener(MyListener.new)
 You can also globally subscribe listeners for the duration of a block.
 
 ```ruby
-Wisper.with_listeners(MyListener.new, OtherListener.new) do
+Wisper.subscribe(MyListener.new, OtherListener.new) do
   # do stuff
 end
 ```
@@ -252,19 +252,19 @@ Temporary Global Listeners are threadsafe.
 
 By default a listener will get notified of all events it can respond to. You
 can limit which events a listener is notified of by passing an event or array
-of events to `:on`.
+of events to `on:`.
 
 ```ruby
-post_creater.subscribe(PusherListener.new, :on => :create_post_successful)
+post_creater.subscribe(PusherListener.new, on: :create_post_successful)
 ```
 
 ## Prefixing broadcast events
 
 If you would prefer listeners to receive events with a prefix, for example
-`on`, you can do so by passing a string or symbol to `:prefix`.
+`on`, you can do so by passing a string or symbol to `prefix:`.
 
 ```ruby
-post_creater.subscribe(PusherListener.new, :prefix => :on)
+post_creater.subscribe(PusherListener.new, prefix: :on)
 ```
 
 If `post_creater` where to broadcast the event `post_created` the subscribed
@@ -274,41 +274,71 @@ use the default prefix, "on".
 ## Mapping an event to a different method
 
 By default the method called on the subscriber is the same as the event
-broadcast. However it can be mapped to a different method using `:with`.
+broadcast. However it can be mapped to a different method using `with:`.
 
 ```ruby
-report_creator.subscribe(MailResponder.new, :with => :successful)
+report_creator.subscribe(MailResponder.new, with: :successful)
 ```
 
-This is pretty useless unless used in conjuction with `:on`, since all events 
+This is pretty useless unless used in conjuction with `on:`, since all events
 will get mapped to `:successful`. Instead you might do something like this:
 
 ```ruby
-report_creator.subscribe(MailResponder.new, :on   => :create_report_successful,
-                                            :with => :successful)
+report_creator.subscribe(MailResponder.new, on:   :create_report_successful,
+                                            with: :successful)
 ```
 
-If you pass an array of events to `:on` each event will be mapped to the same
-method when `:with` is specified. If you need to listen for select events
+If you pass an array of events to `on:` each event will be mapped to the same
+method when `with:` is specified. If you need to listen for select events
 _and_ map each one to a different method subscribe the listener once for
 each mapping:
 
 ```ruby
-report_creator.subscribe(MailResponder.new, :on   => :create_report_successful,
-                                            :with => :successful)
+report_creator.subscribe(MailResponder.new, on:   :create_report_successful,
+                                            with: :successful)
 
-report_creator.subscribe(MailResponder.new, :on   => :create_report_failed,
-                                            :with => :failed)
+report_creator.subscribe(MailResponder.new, on:   :create_report_failed,
+                                            with: :failed)
 ```
 
 ## Chaining subscriptions
 
 ```ruby
 post.on(:success) { |post| redirect_to post }
-    .on(:failure) { |post| render :action => :edit, :locals => :post => post }
+    .on(:failure) { |post| render action: :edit, locals: { post: post } }
 ```
 
 ## RSpec
+
+### Broadcast Matcher
+
+```ruby
+require 'wisper/rspec/matchers'
+
+RSpec::configure do |config|
+  config.include(Wisper::Rspec::BroadcastMatcher)
+end
+
+expect { publisher.execute }.to broadcast(:an_event)
+```
+
+### Using message expections
+
+If you need to assert on the arguments broadcast you can subscribe a double 
+with a [message expection](https://github.com/rspec/rspec-mocks#message-expectations)
+and then use any of the [argument matchers](https://github.com/rspec/rspec-mocks#argument-matchers).
+
+```ruby
+listener = double('Listener')
+
+expect(listener).to receive(:an_event).with(some_args)
+
+publisher.subscribe(listener)
+
+publisher.execute
+```
+
+### Stubbing publishers
 
 Wisper comes with a method for stubbing event publishers so that you can create 
 isolation tests that only care about reacting to events.
@@ -340,7 +370,7 @@ describe CodeThatReactsToEvents do
 
     it "renders" do
       response = CodeThatReactsToEvents.new.do_something
-      response.should == "Hello with foo!"
+      expect(response).to eq "Hello with foo!"
     end
   end
 end
