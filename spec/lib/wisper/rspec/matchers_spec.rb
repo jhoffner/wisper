@@ -20,4 +20,9 @@ describe 'broadcast matcher' do
     publisher = publisher_class.new
     expect { publisher.send(:broadcast, :foobar) }.to broadcast(publisher, :foobar)
   end
+
+  it 'supports to_not' do
+    publisher = publisher_class.new
+    expect { publisher.send(:broadcast, :foobar) }.not_to broadcast(:foobar2)
+  end
 end
