@@ -22,8 +22,14 @@ module Wisper
 
     module BroadcastMatcher
       class Matcher
-        def initialize(event)
-          @event = event
+        def initialize(publisher, event)
+          if !event
+            @event = publisher
+            @publisher = nil
+          else
+            @event = event
+            @publisher = publisher
+          end
         end
 
         def supports_block_expectations?
@@ -33,8 +39,13 @@ module Wisper
         def matches?(block)
           event_recorder = EventRecorder.new
 
-          Wisper.subscribe(event_recorder) do
+          if @publisher
+            @publisher.subscribe(event_recorder)
             block.call
+          else
+            Wisper.subscribe(event_recorder) do
+              block.call
+            end
           end
 
           event_recorder.broadcast?(@event)
@@ -49,8 +60,8 @@ module Wisper
         end
       end
 
-      def broadcast(event)
-        Matcher.new(event)
+      def broadcast(publisher, event = nil)
+        Matcher.new(publisher, event)
       end
     end
   end
